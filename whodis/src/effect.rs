@@ -85,7 +85,16 @@ pub fn instr_effects(instr: &iced_x86::Instruction) -> Vec<Effect> {
             vec![Effect::Write(EffectWrite { dst, src })]
         }
 
-        Lea | Call | Test | Je | Ret => {
+        Lea => {
+            let dst = from_op(instr, 0);
+            let src = match from_op(instr, 1) {
+                Expr::Mem(expr) => *expr,
+                src => panic!("lea {}", src),
+            };
+            vec![Effect::Write(EffectWrite { dst, src })]
+        }
+
+        Call | Test | Je | Ret => {
             vec![Effect::TODO]
         }
 
