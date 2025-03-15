@@ -22,12 +22,25 @@ td {
     font-size: 12px;
     font-family: ui-monospace, monospace;
     color: #777;
+    width: 10ex;
 }
 
 .asm {
-    padding: 0 1rem;
+    width: 40ex;
 }
 
 .effect {
     font-size: 12px;
+    width: 20ex;
+}
+
+.block {
+    border-radius: 0.5em;
+    border: solid 1px transparent;
+    padding: 0.5em;
+    margin: 0.5em;
+}
+
+.block:hover {
+    border: solid 1px #eee;
 }
