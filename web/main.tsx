@@ -6,11 +6,11 @@ function hex(n: number) {
 }
 
 function dis(instrs: wasm.Instr[]) {
-  // <td class='effect'>{inst.Effects?.map(e => <div>{e}</div>)}</td>
   const rows = instrs.map((inst) => (
     <tr>
       <td class='addr'>{hex(inst.ip)}</td>
       <td>{inst.asm}</td>
+      <td class='effect'>{inst.effects.map(e => <div>{e}</div>)}</td>
     </tr>
   ));
   return <table>{rows}</table>;

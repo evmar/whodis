@@ -8,6 +8,15 @@ pub enum Effect {
     TODO,
 }
 
+impl std::fmt::Display for Effect {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Effect::Write(w) => write!(f, "{} = {}", w.dst, w.src),
+            Effect::TODO => write!(f, "TODO"),
+        }
+    }
+}
+
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct EffectWrite {
     pub dst: Expr,
