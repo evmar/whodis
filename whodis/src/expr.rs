@@ -69,12 +69,18 @@ impl Expr {
             return;
         };
 
-        fn take_imm(expr: &mut Expr) -> (Option<Expr>, u32) {
+        /// take the immediate value from an expression, potentially simplifying it to None
+        fn take_imm(expr: &mut Expr) -> (Option<Expr>, i32) {
             match expr {
-                Expr::Imm(val) => return (None, *val),
-                Expr::Math(math) => {
-                    if let Expr::Imm(val) = &*math.rhs {
-                        return (Some(math.lhs.take()), *val);
+                Expr::Imm(val) => return (None, *val as i32),
+                Expr::Math(inner) => {
+                    if let Expr::Imm(val) = &*inner.rhs {
+                        let val = *val as i32;
+                        match inner.op {
+                            '+' => return (Some(inner.lhs.take()), val),
+                            '-' => return (Some(inner.lhs.take()), -val),
+                            _ => {}
+                        }
                     }
                 }
                 _ => {}
@@ -84,14 +90,21 @@ impl Expr {
 
         let (lhs, lc) = take_imm(&mut *math.lhs);
         let (rhs, rc) = take_imm(&mut *math.rhs);
-        let cfold = lc + rc;
+        let cfold = match math.op {
+            '+' => lc + rc,
+            '-' => lc - rc,
+            _ => return,
+        };
 
         let mut new = ExprMath::combine(lhs, rhs);
         if cfold != 0 {
             new = ExprMath::combine(new, Some(Expr::Imm(cfold as u32)));
         }
 
-        *self = new.unwrap();
+        *self = match new {
+            Some(expr) => expr,
+            None => Expr::Imm(0),
+        };
     }
 }
 
@@ -130,7 +143,7 @@ impl ExprMath {
         self.lhs.simplify();
         self.rhs.simplify();
         // ensure constant on the right
-        if self.lhs.is_imm() {
+        if self.op == '+' && self.lhs.is_imm() {
             std::mem::swap(&mut self.lhs, &mut self.rhs);
         }
     }
@@ -274,16 +287,20 @@ mod tests {
         exp.simplify();
         assert_eq!(exp.to_string(), "0x1");
 
-        // let mut exp = parser::parse("(1 + 1) - 1").unwrap();
-        // exp.simplify();
-        // assert_eq!(exp.to_string(), "0x0");
+        let mut exp = parser::parse("1 - 1").unwrap();
+        exp.simplify();
+        assert_eq!(exp.to_string(), "0x0");
 
         let mut exp = parser::parse("(eax + 1) + 2").unwrap();
         exp.simplify();
         assert_eq!(exp.to_string(), "eax + 0x3");
 
-        // let mut exp = parser::parse("(esp - 5) - 4").unwrap();
+        let mut exp = parser::parse("(eax + 1) + (ebx + 2)").unwrap();
         exp.simplify();
+        assert_eq!(exp.to_string(), "eax + ebx + 0x3");
+
+        // let mut exp = parser::parse("(esp - 5) - 4").unwrap();
+        // exp.simplify();
         // assert_eq!(exp.to_string(), "esp - 0x9");
     }
 }

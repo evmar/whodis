@@ -121,6 +121,7 @@ impl State {
             }
             _ => {}
         }
+        expr.simplify();
     }
 
     fn update_effect(&self, eff: &mut Effect) {
