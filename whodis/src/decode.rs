@@ -34,7 +34,7 @@ pub fn blocks(instrs: &[iced_x86::Instruction]) -> Vec<Block> {
         if instr.flow_control() != iced_x86::FlowControl::Next {
             blocks.push(Block {
                 instrs: start..i + 1,
-                effects: vec![], //accum_effects(&instrs[start..=i]),
+                effects: crate::effect::accumulate(&instrs[start..=i]),
             });
             start = i + 1;
         }
@@ -42,7 +42,7 @@ pub fn blocks(instrs: &[iced_x86::Instruction]) -> Vec<Block> {
     if start < instrs.len() {
         blocks.push(Block {
             instrs: start..instrs.len(),
-            effects: vec![], //accum_effects(&instrs[start..]),
+            effects: crate::effect::accumulate(&instrs[start..]),
         });
     }
     blocks

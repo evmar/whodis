@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use super::expr::Expr;
 
@@ -160,4 +160,35 @@ impl State {
         }
         effects
     }
+}
+
+pub fn accumulate(instrs: &[iced_x86::Instruction]) -> Vec<Effect> {
+    let mut vars = Vec::new();
+    let mut state = State::default();
+    let mut effects = Vec::new();
+    for instr in instrs {
+        for eff in state.effects(instr) {
+            match &eff {
+                Effect::Write(w) => match &w.dst {
+                    Expr::Reg(register) => {
+                        if !vars.contains(register) {
+                            vars.push(*register);
+                        }
+                        continue;
+                    }
+                    _ => {}
+                },
+                _ => {}
+            }
+            effects.push(eff);
+        }
+    }
+    vars.sort();
+    for var in vars {
+        effects.push(Effect::Write(EffectWrite {
+            dst: Expr::Reg(var),
+            src: state.reg.get(&var).unwrap().clone(),
+        }));
+    }
+    effects
 }

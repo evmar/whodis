@@ -6,7 +6,7 @@ function hex(n: number) {
 }
 
 function dis(ana: wasm.Analysis) {
-  const beff = false;
+  const beff = true;
   const blocks = ana.blocks.map(({ start, end, effects }) => {
     const rows = [];
     for (let i = start; i < end; i++) {
