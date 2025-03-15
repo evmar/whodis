@@ -4,7 +4,7 @@ body {
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     padding: 5ex;
-    padding-left: 20ex;
+    margin-left: 20ex;
 }
 
 
@@ -51,4 +51,12 @@ td {
 
 .block:hover {
     border: solid 1px #eee;
+}
+
+
+@media (max-width: 500px) {
+    body {
+        margin: 2ex;
+        padding: 0;
+    }
 }
