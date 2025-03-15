@@ -15,6 +15,10 @@ impl Expr {
         Expr::Math(ExprMath::new(lhs, op, rhs))
     }
 
+    pub fn take(&mut self) -> Expr {
+        std::mem::replace(self, Expr::Imm(0))
+    }
+
     pub fn from_op(instr: &iced_x86::Instruction, op: u32) -> Expr {
         use iced_x86::OpKind::*;
         match instr.op_kind(op) {
@@ -49,28 +53,45 @@ impl Expr {
         }
     }
 
-    pub fn simplify(self) -> Expr {
+    pub fn simplify(&mut self) {
         match self {
             Expr::Math(math) => {
-                let (lhs, op, rhs) = (math.lhs.simplify(), math.op, math.rhs.simplify());
-
-                match (&lhs, &rhs) {
-                    (Expr::Imm(lhs), Expr::Imm(rhs)) => {
-                        // constant fold
-                        match op {
-                            '+' => return Expr::Imm(lhs + rhs),
-                            '-' => return Expr::Imm(lhs - rhs),
-                            _ => {}
-                        };
-                    }
-                    _ => {}
-                }
-
-                return Expr::new_math(lhs, op, rhs);
+                math.simplify();
+                self.constant_fold();
             }
-            Expr::Mem(expr) => Expr::Mem(Box::new(expr.simplify())),
-            expr => expr,
+            Expr::Mem(expr) => expr.simplify(),
+            _ => {}
         }
+    }
+
+    fn constant_fold(&mut self) {
+        let Expr::Math(math) = self else {
+            return;
+        };
+
+        fn take_imm(expr: &mut Expr) -> (Option<Expr>, u32) {
+            match expr {
+                Expr::Imm(val) => return (None, *val),
+                Expr::Math(math) => {
+                    if let Expr::Imm(val) = &*math.rhs {
+                        return (Some(math.lhs.take()), *val);
+                    }
+                }
+                _ => {}
+            }
+            (Some(expr.take()), 0)
+        }
+
+        let (lhs, lc) = take_imm(&mut *math.lhs);
+        let (rhs, rc) = take_imm(&mut *math.rhs);
+        let cfold = lc + rc;
+
+        let mut new = ExprMath::combine(lhs, rhs);
+        if cfold != 0 {
+            new = ExprMath::combine(new, Some(Expr::Imm(cfold as u32)));
+        }
+
+        *self = new.unwrap();
     }
 }
 
@@ -104,8 +125,28 @@ impl ExprMath {
             rhs: Box::new(rhs),
         }
     }
+
+    fn simplify(&mut self) {
+        self.lhs.simplify();
+        self.rhs.simplify();
+        // ensure constant on the right
+        if self.lhs.is_imm() {
+            std::mem::swap(&mut self.lhs, &mut self.rhs);
+        }
+    }
+
+    fn combine(lhs: Option<Expr>, rhs: Option<Expr>) -> Option<Expr> {
+        match (lhs, rhs) {
+            (Some(lhs), None) => Some(lhs),
+            (None, Some(rhs)) => Some(rhs),
+            (Some(lhs), Some(rhs)) => Some(Expr::Math(ExprMath::new(lhs, '+', rhs))),
+            _ => None,
+        }
+    }
 }
 
+// simple expression parser, only used in tests
+#[cfg(test)]
 mod parser {
     use std::{iter::Peekable, str::Chars};
 
@@ -206,25 +247,43 @@ mod parser {
             let exp = parser::parse("(esp - 5) - 4").unwrap();
             assert_eq!(exp.to_string(), "esp - 0x5 - 0x4");
         }
+    }
+}
 
-        #[test]
-        fn test_simplify() {
-            let exp = parser::parse("0").unwrap().simplify();
-            assert_eq!(exp.to_string(), "0x0");
-            let exp = parser::parse("1").unwrap().simplify();
-            assert_eq!(exp.to_string(), "0x1");
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-            let exp = parser::parse("0 + 1").unwrap().simplify();
-            assert_eq!(exp.to_string(), "0x1");
+    #[test]
+    fn test_simplify() {
+        let mut exp = parser::parse("0").unwrap();
+        exp.simplify();
+        assert_eq!(exp.to_string(), "0x0");
+        let mut exp = parser::parse("1").unwrap();
+        exp.simplify();
+        assert_eq!(exp.to_string(), "0x1");
 
-            let exp = parser::parse("eax + 1").unwrap().simplify();
-            assert_eq!(exp.to_string(), "eax + 0x1");
+        let mut exp = parser::parse("eax + 1").unwrap();
+        exp.simplify();
+        assert_eq!(exp.to_string(), "eax + 0x1");
+    }
 
-            let exp = parser::parse("(eax + 1) + 2").unwrap().simplify();
-            assert_eq!(exp.to_string(), "eax + 0x3");
+    #[test]
+    fn test_cfold() {
+        let mut exp = parser::parse("0 + 1").unwrap();
+        exp.simplify();
+        assert_eq!(exp.to_string(), "0x1");
 
-            // let exp = parser::parse("(esp - 5) - 4").unwrap().simplify();
-            // assert_eq!(exp.to_string(), "esp - 0x9");
-        }
+        // let mut exp = parser::parse("(1 + 1) - 1").unwrap();
+        // exp.simplify();
+        // assert_eq!(exp.to_string(), "0x0");
+
+        let mut exp = parser::parse("(eax + 1) + 2").unwrap();
+        exp.simplify();
+        assert_eq!(exp.to_string(), "eax + 0x3");
+
+        // let mut exp = parser::parse("(esp - 5) - 4").unwrap();
+        exp.simplify();
+        // assert_eq!(exp.to_string(), "esp - 0x9");
     }
 }
