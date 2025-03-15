@@ -1,0 +1,11 @@
+{
+  "name": "web",
+  "scripts": {
+    "build": "esbuild --bundle --format=esm --sourcemap --outfile=bundle.js main.tsx"
+  },
+  "dependencies": {
+    "esbuild": "^0.25.1",
+    "preact": "^10.26.4",
+    "typescript": "^5.8.2"
+  }
+}
