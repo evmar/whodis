@@ -96,9 +96,11 @@ impl Expr {
             _ => return,
         };
 
-        let mut new = ExprMath::combine(lhs, rhs);
-        if cfold != 0 {
-            new = ExprMath::combine(new, Some(Expr::Imm(cfold as u32)));
+        let mut new = ExprMath::combine(lhs, '+', rhs);
+        if cfold > 0 {
+            new = ExprMath::combine(new, '+', Some(Expr::Imm(cfold as u32)));
+        } else if cfold < 0 {
+            new = ExprMath::combine(new, '-', Some(Expr::Imm(-cfold as u32)));
         }
 
         *self = match new {
@@ -148,11 +150,11 @@ impl ExprMath {
         }
     }
 
-    fn combine(lhs: Option<Expr>, rhs: Option<Expr>) -> Option<Expr> {
+    fn combine(lhs: Option<Expr>, op: char, rhs: Option<Expr>) -> Option<Expr> {
         match (lhs, rhs) {
             (Some(lhs), None) => Some(lhs),
             (None, Some(rhs)) => Some(rhs),
-            (Some(lhs), Some(rhs)) => Some(Expr::Math(ExprMath::new(lhs, '+', rhs))),
+            (Some(lhs), Some(rhs)) => Some(Expr::Math(ExprMath::new(lhs, op, rhs))),
             _ => None,
         }
     }
@@ -299,8 +301,8 @@ mod tests {
         exp.simplify();
         assert_eq!(exp.to_string(), "eax + ebx + 0x3");
 
-        // let mut exp = parser::parse("(esp - 5) - 4").unwrap();
-        // exp.simplify();
-        // assert_eq!(exp.to_string(), "esp - 0x9");
+        let mut exp = parser::parse("(esp - 5) - 4").unwrap();
+        exp.simplify();
+        assert_eq!(exp.to_string(), "esp - 0x9");
     }
 }
