@@ -44,10 +44,14 @@ pub fn from_op(instr: &iced_x86::Instruction, op: u32) -> Expr {
     }
 }
 
+fn reg_to_string(reg: &iced_x86::Register) -> String {
+    format!("{:?}", reg).to_lowercase()
+}
+
 impl std::fmt::Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Expr::Reg(reg) => write!(f, "{:?}", reg),
+            Expr::Reg(reg) => write!(f, "{}", reg_to_string(reg)),
             Expr::Imm(imm) => write!(f, "{:#x}", imm),
             Expr::Math(math) => write!(f, "{} {} {}", math.lhs, math.op, math.rhs),
             Expr::Mem(expr) => write!(f, "[{}]", expr),
