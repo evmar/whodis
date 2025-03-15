@@ -1,3 +1,5 @@
+use crate::effect::Effect;
+
 pub fn sample() -> Vec<iced_x86::Instruction> {
     let paint: [u8; 175] = [
         0x83, 0xec, 0x50, 0x56, 0x8b, 0xf1, 0x8b, 0x46, 0x04, 0x8b, 0x40, 0x04, 0x6a, 0x00, 0x8d,
@@ -22,6 +24,7 @@ pub fn sample() -> Vec<iced_x86::Instruction> {
 
 pub struct Block {
     pub instrs: std::ops::Range<usize>,
+    pub effects: Vec<Effect>,
 }
 
 pub fn blocks(instrs: &[iced_x86::Instruction]) -> Vec<Block> {
@@ -31,6 +34,7 @@ pub fn blocks(instrs: &[iced_x86::Instruction]) -> Vec<Block> {
         if instr.flow_control() != iced_x86::FlowControl::Next {
             blocks.push(Block {
                 instrs: start..i + 1,
+                effects: vec![], //accum_effects(&instrs[start..=i]),
             });
             start = i + 1;
         }
@@ -38,6 +42,7 @@ pub fn blocks(instrs: &[iced_x86::Instruction]) -> Vec<Block> {
     if start < instrs.len() {
         blocks.push(Block {
             instrs: start..instrs.len(),
+            effects: vec![], //accum_effects(&instrs[start..]),
         });
     }
     blocks

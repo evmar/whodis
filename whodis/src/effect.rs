@@ -1,4 +1,6 @@
-use crate::expr::{ExprMath, from_op};
+use std::collections::HashMap;
+
+use crate::expr::ExprMath;
 
 use super::expr::Expr;
 
@@ -35,8 +37,8 @@ pub fn instr_effects(instr: &iced_x86::Instruction) -> Vec<Effect> {
                 Xor => '^',
                 _ => unreachable!(),
             };
-            let src = from_op(instr, 1);
-            let dst = from_op(instr, 0);
+            let src = Expr::from_op(instr, 1);
+            let dst = Expr::from_op(instr, 0);
             let val = Expr::Math(Box::new(ExprMath {
                 op,
                 lhs: dst.clone(),
@@ -46,7 +48,7 @@ pub fn instr_effects(instr: &iced_x86::Instruction) -> Vec<Effect> {
         }
 
         Push => {
-            let src = from_op(instr, 0);
+            let src = Expr::from_op(instr, 0);
             vec![
                 Effect::Write(EffectWrite {
                     dst: Expr::Reg(iced_x86::Register::ESP),
@@ -64,7 +66,7 @@ pub fn instr_effects(instr: &iced_x86::Instruction) -> Vec<Effect> {
         }
 
         Pop => {
-            let dst = from_op(instr, 0);
+            let dst = Expr::from_op(instr, 0);
             vec![
                 Effect::Write(EffectWrite {
                     dst,
@@ -82,14 +84,14 @@ pub fn instr_effects(instr: &iced_x86::Instruction) -> Vec<Effect> {
         }
 
         Mov => {
-            let src = from_op(instr, 1);
-            let dst = from_op(instr, 0);
+            let src = Expr::from_op(instr, 1);
+            let dst = Expr::from_op(instr, 0);
             vec![Effect::Write(EffectWrite { dst, src })]
         }
 
         Lea => {
-            let dst = from_op(instr, 0);
-            let src = match from_op(instr, 1) {
+            let dst = Expr::from_op(instr, 0);
+            let src = match Expr::from_op(instr, 1) {
                 Expr::Mem(expr) => *expr,
                 src => panic!("lea {}", src),
             };
@@ -97,7 +99,7 @@ pub fn instr_effects(instr: &iced_x86::Instruction) -> Vec<Effect> {
         }
 
         Je => {
-            let dst = from_op(instr, 0);
+            let dst = Expr::from_op(instr, 0);
             vec![Effect::Jmp(dst)]
         }
 
@@ -110,5 +112,69 @@ pub fn instr_effects(instr: &iced_x86::Instruction) -> Vec<Effect> {
         }
 
         m => todo!("effects for {:?}", m),
+    }
+}
+
+#[derive(Default)]
+pub struct State {
+    reg: HashMap<iced_x86::Register, Expr>,
+}
+
+impl State {
+    fn update_expr(&self, expr: Expr) -> Expr {
+        match expr {
+            Expr::Reg(reg) => self.reg.get(&reg).cloned().unwrap_or(expr),
+            Expr::Mem(expr) => Expr::Mem(Box::new(self.update_expr(*expr))),
+            Expr::Math(math) => {
+                let lhs = self.update_expr(math.lhs);
+                let rhs = self.update_expr(math.rhs);
+                Expr::Math(Box::new(ExprMath {
+                    op: math.op,
+                    lhs,
+                    rhs,
+                }))
+            }
+            _ => expr,
+        }
+    }
+
+    fn update_effect(&self, eff: Effect) -> Effect {
+        match eff {
+            Effect::Write(w) => Effect::Write(match &w.dst {
+                Expr::Reg(_) => EffectWrite {
+                    dst: w.dst,
+                    src: self.update_expr(w.src),
+                },
+                Expr::Mem(_) => EffectWrite {
+                    dst: self.update_expr(w.dst),
+                    src: self.update_expr(w.src),
+                },
+                _ => w,
+            }),
+            Effect::Jmp(dst) => Effect::Jmp(self.update_expr(dst)),
+            Effect::TODO => eff,
+        }
+    }
+
+    fn evolve(&mut self, eff: &Effect) {
+        match eff {
+            Effect::Write(w) => match w.dst {
+                Expr::Reg(reg) => {
+                    self.reg.insert(reg, w.src.clone());
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+    }
+
+    pub fn effects(&mut self, instr: &iced_x86::Instruction) -> Vec<Effect> {
+        let mut effects = Vec::new();
+        for eff in instr_effects(instr) {
+            let eff = self.update_effect(eff);
+            self.evolve(&eff);
+            effects.push(eff);
+        }
+        effects
     }
 }

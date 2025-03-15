@@ -11,6 +11,7 @@ pub struct Instr {
 pub struct Block {
     start: usize,
     end: usize,
+    effects: Vec<String>,
 }
 
 #[derive(tsify_next::Tsify, serde::Serialize, serde::Deserialize)]
@@ -25,16 +26,15 @@ pub fn sample() -> Analysis {
     let instrs = whodis::decode::sample();
     let blocks = whodis::decode::blocks(&instrs);
 
+    let mut s = whodis::effect::State::default();
+
     Analysis {
         instrs: instrs
             .iter()
             .map(|i| Instr {
                 ip: i.ip() as u32,
                 asm: i.to_string(),
-                effects: whodis::effect::instr_effects(i)
-                    .iter()
-                    .map(|e| e.to_string())
-                    .collect(),
+                effects: s.effects(i).iter().map(|e| e.to_string()).collect(),
             })
             .collect(),
         blocks: blocks
@@ -42,6 +42,7 @@ pub fn sample() -> Analysis {
             .map(|b| Block {
                 start: b.instrs.start,
                 end: b.instrs.end,
+                effects: b.effects.iter().map(|e| e.to_string()).collect(),
             })
             .collect(),
     }
