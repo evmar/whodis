@@ -1,0 +1,62 @@
+body {
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    padding: 5ex;
+    margin-left: 20ex;
+}
+
+
+select,
+::picker(select) {
+    /* https://open-ui.org/components/customizableselect/ */
+    appearance: base-select;
+    border: solid 1px #777;
+}
+
+.box {
+    display: inline-block;
+    border-radius: 0.5rem;
+    border: solid 1px #eee;
+    padding: 0.5rem;
+}
+
+td {
+    vertical-align: baseline;
+}
+
+.addr {
+    font-size: 12px;
+    font-family: ui-monospace, monospace;
+    color: #777;
+    width: 10ex;
+}
+
+.asm {
+    width: 40ex;
+}
+
+.effect {
+    font-size: 12px;
+    width: 40ex;
+}
+
+.block {
+    border-radius: 0.5em;
+    border: solid 1px transparent;
+    padding: 0.5em;
+    margin: 0.5em;
+}
+
+.block:hover {
+    border: solid 1px #eee;
+}
+
+
+@media (max-width: 500px) {
+    body {
+        margin: 2ex;
+        padding: 0;
+    }
+}
