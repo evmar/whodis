@@ -7,13 +7,14 @@ pub enum Expr {
 }
 
 pub fn from_op(instr: &iced_x86::Instruction, op: u32) -> Expr {
+    use iced_x86::OpKind::*;
     match instr.op_kind(op) {
-        iced_x86::OpKind::Register => Expr::Reg(instr.op_register(op)),
-        iced_x86::OpKind::Immediate8 => Expr::Imm(instr.immediate8() as u32),
-        iced_x86::OpKind::Immediate8to32 => Expr::Imm(instr.immediate8to32() as u32),
-        iced_x86::OpKind::Immediate16 => Expr::Imm(instr.immediate16() as u32),
-        iced_x86::OpKind::Immediate32 => Expr::Imm(instr.immediate32() as u32),
-        iced_x86::OpKind::Memory => {
+        Register => Expr::Reg(instr.op_register(op)),
+        Immediate8 => Expr::Imm(instr.immediate8() as u32),
+        Immediate8to32 => Expr::Imm(instr.immediate8to32() as u32),
+        Immediate16 => Expr::Imm(instr.immediate16() as u32),
+        Immediate32 => Expr::Imm(instr.immediate32() as u32),
+        Memory => {
             let mut expr = Expr::Imm(instr.memory_displacement32());
 
             if instr.memory_index() != iced_x86::Register::None {
@@ -40,6 +41,9 @@ pub fn from_op(instr: &iced_x86::Instruction, op: u32) -> Expr {
 
             Expr::Mem(Box::new(expr))
         }
+
+        NearBranch32 => Expr::Imm(instr.near_branch32() as u32),
+
         _ => todo!("op_expr for {:?}", instr.op_kind(op)),
     }
 }

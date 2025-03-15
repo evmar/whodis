@@ -5,6 +5,7 @@ use super::expr::Expr;
 #[derive(Debug)]
 pub enum Effect {
     Write(EffectWrite),
+    Jmp(Expr),
     TODO,
 }
 
@@ -12,6 +13,7 @@ impl std::fmt::Display for Effect {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Effect::Write(w) => write!(f, "{} = {}", w.dst, w.src),
+            Effect::Jmp(dst) => write!(f, "→ {}", dst),
             Effect::TODO => write!(f, "TODO"),
         }
     }
@@ -94,7 +96,12 @@ pub fn instr_effects(instr: &iced_x86::Instruction) -> Vec<Effect> {
             vec![Effect::Write(EffectWrite { dst, src })]
         }
 
-        Call | Test | Je | Ret => {
+        Je => {
+            let dst = from_op(instr, 0);
+            vec![Effect::Jmp(dst)]
+        }
+
+        Call | Test | Ret => {
             vec![Effect::TODO]
         }
 
