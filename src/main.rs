@@ -1,121 +1,7 @@
-#[derive(Debug, serde::Serialize)]
-enum Effect {
-    Write(EffectWrite),
-    TODO,
-}
+use effect::instr_effects;
 
-#[derive(Debug, serde::Serialize)]
-struct EffectWrite {
-    dst: Expr,
-    src: Expr,
-}
-
-fn ser_reg<S: serde::Serializer>(reg: &iced_x86::Register, s: S) -> Result<S::Ok, S::Error> {
-    s.serialize_str(&format!("{:?}", reg))
-}
-
-#[derive(Debug, Clone, serde::Serialize)]
-enum Expr {
-    #[serde(serialize_with = "ser_reg")]
-    Reg(iced_x86::Register),
-    Imm(u32),
-    Math(Box<ExprMath>),
-    Mem(),
-    //BinOp(Box<Expr>, iced_x86::Code, Box<Expr>),
-}
-
-#[derive(Debug, Clone, serde::Serialize)]
-struct ExprMath {
-    op: char,
-    lhs: Expr,
-    rhs: Expr,
-}
-
-fn op_expr(instr: &iced_x86::Instruction, op: u32) -> Expr {
-    match instr.op_kind(op) {
-        iced_x86::OpKind::Register => Expr::Reg(instr.op_register(op)),
-        iced_x86::OpKind::Immediate8 => Expr::Imm(instr.immediate8() as u32),
-        iced_x86::OpKind::Immediate8to32 => Expr::Imm(instr.immediate8to32() as u32),
-        iced_x86::OpKind::Immediate16 => Expr::Imm(instr.immediate16() as u32),
-        iced_x86::OpKind::Immediate32 => Expr::Imm(instr.immediate32() as u32),
-        iced_x86::OpKind::Memory => Expr::Mem(),
-        _ => todo!("op_expr for {:?}", instr.op_kind(op)),
-    }
-}
-
-fn effects(instr: &iced_x86::Instruction) -> Vec<Effect> {
-    use iced_x86::Mnemonic::*;
-    match instr.mnemonic() {
-        Add | Sub | Xor => {
-            let op = match instr.mnemonic() {
-                Add => '+',
-                Sub => '-',
-                Xor => '^',
-                _ => unreachable!(),
-            };
-            let src = op_expr(instr, 1);
-            let dst = op_expr(instr, 0);
-            let val = Expr::Math(Box::new(ExprMath {
-                op,
-                lhs: dst.clone(),
-                rhs: src,
-            }));
-            vec![Effect::Write(EffectWrite { dst, src: val })]
-        }
-
-        Push => {
-            let src = op_expr(instr, 0);
-            vec![
-                Effect::Write(EffectWrite {
-                    dst: Expr::Reg(iced_x86::Register::ESP),
-                    src: Expr::Math(Box::new(ExprMath {
-                        op: '-',
-                        lhs: Expr::Reg(iced_x86::Register::ESP),
-                        rhs: Expr::Imm(4),
-                    })),
-                }),
-                Effect::Write(EffectWrite {
-                    dst: Expr::Mem(),
-                    src,
-                }),
-            ]
-        }
-
-        Pop => {
-            let dst = op_expr(instr, 0);
-            vec![
-                Effect::Write(EffectWrite {
-                    dst,
-                    src: Expr::Mem(),
-                }),
-                Effect::Write(EffectWrite {
-                    dst: Expr::Reg(iced_x86::Register::ESP),
-                    src: Expr::Math(Box::new(ExprMath {
-                        op: '+',
-                        lhs: Expr::Reg(iced_x86::Register::ESP),
-                        rhs: Expr::Imm(4),
-                    })),
-                }),
-            ]
-        }
-
-        Mov => {
-            let src = op_expr(instr, 1);
-            let dst = op_expr(instr, 0);
-            vec![Effect::Write(EffectWrite { dst, src })]
-        }
-
-        Lea | Call | Test | Je | Ret => {
-            vec![Effect::TODO]
-        }
-
-        Nop => {
-            vec![]
-        }
-
-        m => todo!("effects for {:?}", m),
-    }
-}
+mod effect;
+mod expr;
 
 fn main() {
     let paint: [u8; 175] = [
@@ -138,7 +24,7 @@ fn main() {
         iced_x86::Decoder::with_ip(32, &paint, eip as u64, iced_x86::DecoderOptions::NONE);
     for instr in decoder {
         println!("{}", instr);
-        let eff = effects(&instr);
+        let eff = instr_effects(&instr);
         for e in eff {
             let js = serde_json::to_string(&e).unwrap();
             println!("  {}", js);
