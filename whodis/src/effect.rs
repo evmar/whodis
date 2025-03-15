@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-use crate::expr::ExprMath;
-
 use super::expr::Expr;
 
 #[derive(Debug)]
@@ -39,11 +37,7 @@ pub fn instr_effects(instr: &iced_x86::Instruction) -> Vec<Effect> {
             };
             let src = Expr::from_op(instr, 1);
             let dst = Expr::from_op(instr, 0);
-            let val = Expr::Math(Box::new(ExprMath {
-                op,
-                lhs: dst.clone(),
-                rhs: src,
-            }));
+            let val = Expr::new_math(dst.clone(), op, src);
             vec![Effect::Write(EffectWrite { dst, src: val })]
         }
 
@@ -52,11 +46,7 @@ pub fn instr_effects(instr: &iced_x86::Instruction) -> Vec<Effect> {
             vec![
                 Effect::Write(EffectWrite {
                     dst: Expr::Reg(iced_x86::Register::ESP),
-                    src: Expr::Math(Box::new(ExprMath {
-                        op: '-',
-                        lhs: Expr::Reg(iced_x86::Register::ESP),
-                        rhs: Expr::Imm(4),
-                    })),
+                    src: Expr::new_math(Expr::Reg(iced_x86::Register::ESP), '-', Expr::Imm(4)),
                 }),
                 Effect::Write(EffectWrite {
                     dst: Expr::Mem(Box::new(Expr::Reg(iced_x86::Register::ESP))),
@@ -74,11 +64,7 @@ pub fn instr_effects(instr: &iced_x86::Instruction) -> Vec<Effect> {
                 }),
                 Effect::Write(EffectWrite {
                     dst: Expr::Reg(iced_x86::Register::ESP),
-                    src: Expr::Math(Box::new(ExprMath {
-                        op: '+',
-                        lhs: Expr::Reg(iced_x86::Register::ESP),
-                        rhs: Expr::Imm(4),
-                    })),
+                    src: Expr::new_math(Expr::Reg(iced_x86::Register::ESP), '+', Expr::Imm(4)),
                 }),
             ]
         }
@@ -121,38 +107,34 @@ pub struct State {
 }
 
 impl State {
-    fn update_expr(&self, expr: Expr) -> Expr {
+    fn update_expr(&self, expr: &mut Expr) {
         match expr {
-            Expr::Reg(reg) => self.reg.get(&reg).cloned().unwrap_or(expr),
-            Expr::Mem(expr) => Expr::Mem(Box::new(self.update_expr(*expr))),
-            Expr::Math(math) => {
-                let lhs = self.update_expr(math.lhs);
-                let rhs = self.update_expr(math.rhs);
-                Expr::Math(Box::new(ExprMath {
-                    op: math.op,
-                    lhs,
-                    rhs,
-                }))
+            Expr::Reg(reg) => {
+                if let Some(e) = self.reg.get(&reg) {
+                    *expr = e.clone();
+                }
             }
-            _ => expr,
+            Expr::Mem(expr) => self.update_expr(&mut *expr),
+            Expr::Math(math) => {
+                self.update_expr(&mut math.lhs);
+                self.update_expr(&mut math.rhs);
+            }
+            _ => {}
         }
     }
 
-    fn update_effect(&self, eff: Effect) -> Effect {
+    fn update_effect(&self, eff: &mut Effect) {
         match eff {
-            Effect::Write(w) => Effect::Write(match &w.dst {
-                Expr::Reg(_) => EffectWrite {
-                    dst: w.dst,
-                    src: self.update_expr(w.src),
-                },
-                Expr::Mem(_) => EffectWrite {
-                    dst: self.update_expr(w.dst),
-                    src: self.update_expr(w.src),
-                },
-                _ => w,
-            }),
-            Effect::Jmp(dst) => Effect::Jmp(self.update_expr(dst)),
-            Effect::TODO => eff,
+            Effect::Write(w) => match &w.dst {
+                Expr::Reg(_) => self.update_expr(&mut w.src),
+                Expr::Mem(_) => {
+                    self.update_expr(&mut w.dst);
+                    self.update_expr(&mut w.src);
+                }
+                _ => {}
+            },
+            Effect::Jmp(dst) => self.update_expr(dst),
+            _ => {}
         }
     }
 
@@ -170,8 +152,8 @@ impl State {
 
     pub fn effects(&mut self, instr: &iced_x86::Instruction) -> Vec<Effect> {
         let mut effects = Vec::new();
-        for eff in instr_effects(instr) {
-            let eff = self.update_effect(eff);
+        for mut eff in instr_effects(instr) {
+            self.update_effect(&mut eff);
             self.evolve(&eff);
             effects.push(eff);
         }

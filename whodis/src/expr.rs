@@ -2,13 +2,17 @@
 pub enum Expr {
     Reg(iced_x86::Register),
     Imm(u32),
-    Math(Box<ExprMath>),
+    Math(ExprMath),
     Mem(Box<Expr>),
 }
 
 impl Expr {
     pub fn is_imm(&self) -> bool {
         matches!(self, Expr::Imm(_))
+    }
+
+    pub fn new_math(lhs: Expr, op: char, rhs: Expr) -> Expr {
+        Expr::Math(ExprMath::new(lhs, op, rhs))
     }
 
     pub fn from_op(instr: &iced_x86::Instruction, op: u32) -> Expr {
@@ -23,25 +27,17 @@ impl Expr {
                 let mut expr = Expr::Imm(instr.memory_displacement32());
 
                 if instr.memory_index() != iced_x86::Register::None {
-                    let index = Expr::Math(Box::new(ExprMath {
-                        op: '*',
-                        lhs: Expr::Reg(instr.memory_index()),
-                        rhs: Expr::Imm(instr.memory_index_scale()),
-                    }));
-                    expr = Expr::Math(Box::new(ExprMath {
-                        op: '+',
-                        lhs: index,
-                        rhs: expr,
-                    }));
+                    let index = Expr::new_math(
+                        Expr::Reg(instr.memory_index()),
+                        '*',
+                        Expr::Imm(instr.memory_index_scale()),
+                    );
+                    expr = Expr::new_math(index, '+', expr);
                 }
 
                 if instr.memory_base() != iced_x86::Register::None {
                     let base = Expr::Reg(instr.memory_base());
-                    expr = Expr::Math(Box::new(ExprMath {
-                        op: '+',
-                        lhs: base,
-                        rhs: expr,
-                    }));
+                    expr = Expr::new_math(base, '+', expr);
                 }
 
                 Expr::Mem(Box::new(expr))
@@ -70,7 +66,7 @@ impl Expr {
                     _ => {}
                 }
 
-                return Expr::Math(Box::new(ExprMath { op, lhs, rhs }));
+                return Expr::new_math(lhs, op, rhs);
             }
             Expr::Mem(expr) => Expr::Mem(Box::new(expr.simplify())),
             expr => expr,
@@ -95,7 +91,17 @@ impl std::fmt::Display for Expr {
 
 #[derive(Debug, Clone)]
 pub struct ExprMath {
-    pub lhs: Expr,
+    pub lhs: Box<Expr>,
     pub op: char,
-    pub rhs: Expr,
+    pub rhs: Box<Expr>,
+}
+
+impl ExprMath {
+    pub fn new(lhs: Expr, op: char, rhs: Expr) -> Self {
+        Self {
+            lhs: Box::new(lhs),
+            op,
+            rhs: Box::new(rhs),
+        }
+    }
 }
