@@ -4,6 +4,7 @@ body {
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     padding: 5ex;
+    padding-left: 20ex;
 }
 
 .box {
@@ -19,11 +20,14 @@ td {
 
 .addr {
     font-size: 12px;
-    padding-right: 0.5rem;
     font-family: ui-monospace, monospace;
+    color: #777;
+}
+
+.asm {
+    padding: 0 1rem;
 }
 
 .effect {
     font-size: 12px;
-    color: #777;
 }

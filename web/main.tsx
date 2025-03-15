@@ -9,7 +9,7 @@ function dis(instrs: wasm.Instr[]) {
   const rows = instrs.map((inst) => (
     <tr>
       <td class='addr'>{hex(inst.ip)}</td>
-      <td>{inst.asm}</td>
+      <td class='asm'>{inst.asm}</td>
       <td class='effect'>{inst.effects.map(e => <div>{e}</div>)}</td>
     </tr>
   ));
