@@ -107,6 +107,13 @@ pub struct State {
 }
 
 impl State {
+    pub fn initial_regs(&mut self) {
+        for var in "eax ecx edx ebx esp ebp esi edi".split(' ') {
+            self.var
+                .insert(var.to_string(), Expr::Var(format!("${var}")));
+        }
+    }
+
     fn update_expr(&self, expr: &mut Expr) {
         match expr {
             Expr::Var(var) => {

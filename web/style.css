@@ -7,6 +7,14 @@ body {
     padding-left: 20ex;
 }
 
+
+select,
+::picker(select) {
+    /* https://open-ui.org/components/customizableselect/ */
+    appearance: base-select;
+    border: solid 1px #777;
+}
+
 .box {
     display: inline-block;
     border-radius: 0.5rem;
