@@ -1,6 +1,6 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
-    Reg(iced_x86::Register),
+    Var(String),
     Imm(u32),
     Math(ExprMath),
     Mem(Box<Expr>),
@@ -9,6 +9,10 @@ pub enum Expr {
 impl Expr {
     pub fn is_imm(&self) -> bool {
         matches!(self, Expr::Imm(_))
+    }
+
+    pub fn new_reg(reg: iced_x86::Register) -> Expr {
+        Expr::Var(format!("{:?}", reg).to_lowercase())
     }
 
     pub fn new_math(lhs: Expr, op: char, rhs: Expr) -> Expr {
@@ -22,7 +26,7 @@ impl Expr {
     pub fn from_op(instr: &iced_x86::Instruction, op: u32) -> Expr {
         use iced_x86::OpKind::*;
         match instr.op_kind(op) {
-            Register => Expr::Reg(instr.op_register(op)),
+            Register => Expr::new_reg(instr.op_register(op)),
             Immediate8 => Expr::Imm(instr.immediate8() as u32),
             Immediate8to32 => Expr::Imm(instr.immediate8to32() as u32),
             Immediate16 => Expr::Imm(instr.immediate16() as u32),
@@ -32,7 +36,7 @@ impl Expr {
 
                 if instr.memory_index() != iced_x86::Register::None {
                     let index = Expr::new_math(
-                        Expr::Reg(instr.memory_index()),
+                        Expr::new_reg(instr.memory_index()),
                         '*',
                         Expr::Imm(instr.memory_index_scale()),
                     );
@@ -40,7 +44,7 @@ impl Expr {
                 }
 
                 if instr.memory_base() != iced_x86::Register::None {
-                    let base = Expr::Reg(instr.memory_base());
+                    let base = Expr::new_reg(instr.memory_base());
                     expr = Expr::new_math(base, '+', expr);
                 }
 
@@ -110,14 +114,10 @@ impl Expr {
     }
 }
 
-fn reg_to_string(reg: &iced_x86::Register) -> String {
-    format!("{:?}", reg).to_lowercase()
-}
-
 impl std::fmt::Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Expr::Reg(reg) => write!(f, "{}", reg_to_string(reg)),
+            Expr::Var(var) => write!(f, "{}", var),
             Expr::Imm(imm) => write!(f, "{:#x}", imm),
             Expr::Math(math) => write!(f, "{} {} {}", math.lhs, math.op, math.rhs),
             Expr::Mem(expr) => write!(f, "[{}]", expr),
@@ -202,7 +202,7 @@ mod parser {
                 c if c.is_alphabetic() => {
                     let reg = parse_reg(p).unwrap();
                     assert!(expr.is_none());
-                    expr = Some(Expr::Reg(reg));
+                    expr = Some(Expr::new_reg(reg));
                 }
                 c => unimplemented!("{:?}", c),
             }

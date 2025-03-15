@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use super::expr::Expr;
 
@@ -45,11 +45,11 @@ pub fn instr_effects(instr: &iced_x86::Instruction) -> Vec<Effect> {
             let src = Expr::from_op(instr, 0);
             vec![
                 Effect::Write(EffectWrite {
-                    dst: Expr::Reg(iced_x86::Register::ESP),
-                    src: Expr::new_math(Expr::Reg(iced_x86::Register::ESP), '-', Expr::Imm(4)),
+                    dst: Expr::new_reg(iced_x86::Register::ESP),
+                    src: Expr::new_math(Expr::new_reg(iced_x86::Register::ESP), '-', Expr::Imm(4)),
                 }),
                 Effect::Write(EffectWrite {
-                    dst: Expr::Mem(Box::new(Expr::Reg(iced_x86::Register::ESP))),
+                    dst: Expr::Mem(Box::new(Expr::new_reg(iced_x86::Register::ESP))),
                     src,
                 }),
             ]
@@ -60,11 +60,11 @@ pub fn instr_effects(instr: &iced_x86::Instruction) -> Vec<Effect> {
             vec![
                 Effect::Write(EffectWrite {
                     dst,
-                    src: Expr::Mem(Box::new(Expr::Reg(iced_x86::Register::ESP))),
+                    src: Expr::Mem(Box::new(Expr::new_reg(iced_x86::Register::ESP))),
                 }),
                 Effect::Write(EffectWrite {
-                    dst: Expr::Reg(iced_x86::Register::ESP),
-                    src: Expr::new_math(Expr::Reg(iced_x86::Register::ESP), '+', Expr::Imm(4)),
+                    dst: Expr::new_reg(iced_x86::Register::ESP),
+                    src: Expr::new_math(Expr::new_reg(iced_x86::Register::ESP), '+', Expr::Imm(4)),
                 }),
             ]
         }
@@ -103,14 +103,14 @@ pub fn instr_effects(instr: &iced_x86::Instruction) -> Vec<Effect> {
 
 #[derive(Default)]
 pub struct State {
-    reg: HashMap<iced_x86::Register, Expr>,
+    var: HashMap<String, Expr>,
 }
 
 impl State {
     fn update_expr(&self, expr: &mut Expr) {
         match expr {
-            Expr::Reg(reg) => {
-                if let Some(e) = self.reg.get(&reg) {
+            Expr::Var(var) => {
+                if let Some(e) = self.var.get(var) {
                     *expr = e.clone();
                 }
             }
@@ -127,7 +127,7 @@ impl State {
     fn update_effect(&self, eff: &mut Effect) {
         match eff {
             Effect::Write(w) => match &w.dst {
-                Expr::Reg(_) => self.update_expr(&mut w.src),
+                Expr::Var(_) => self.update_expr(&mut w.src),
                 Expr::Mem(_) => {
                     self.update_expr(&mut w.dst);
                     self.update_expr(&mut w.src);
@@ -141,9 +141,9 @@ impl State {
 
     fn evolve(&mut self, eff: &Effect) {
         match eff {
-            Effect::Write(w) => match w.dst {
-                Expr::Reg(reg) => {
-                    self.reg.insert(reg, w.src.clone());
+            Effect::Write(w) => match &w.dst {
+                Expr::Var(var) => {
+                    self.var.insert(var.clone(), w.src.clone());
                 }
                 _ => {}
             },
@@ -170,9 +170,9 @@ pub fn accumulate(instrs: &[iced_x86::Instruction]) -> Vec<Effect> {
         for eff in state.effects(instr) {
             match &eff {
                 Effect::Write(w) => match &w.dst {
-                    Expr::Reg(register) => {
-                        if !vars.contains(register) {
-                            vars.push(*register);
+                    Expr::Var(var) => {
+                        if !vars.contains(var) {
+                            vars.push(var.clone());
                         }
                         continue;
                     }
@@ -185,9 +185,10 @@ pub fn accumulate(instrs: &[iced_x86::Instruction]) -> Vec<Effect> {
     }
     vars.sort();
     for var in vars {
+        let src = state.var.get(&var).unwrap().clone();
         effects.push(Effect::Write(EffectWrite {
-            dst: Expr::Reg(var),
-            src: state.reg.get(&var).unwrap().clone(),
+            dst: Expr::Var(var),
+            src,
         }));
     }
     effects
