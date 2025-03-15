@@ -2,13 +2,13 @@ use crate::expr::{ExprMath, from_op};
 
 use super::expr::Expr;
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub enum Effect {
     Write(EffectWrite),
     TODO,
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct EffectWrite {
     pub dst: Expr,
     pub src: Expr,

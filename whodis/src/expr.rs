@@ -2,9 +2,14 @@ fn ser_reg<S: serde::Serializer>(reg: &iced_x86::Register, s: S) -> Result<S::Ok
     s.serialize_str(&format!("{:?}", reg))
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
+fn deser_reg<'de, D: serde::Deserializer<'de>>(_d: D) -> Result<iced_x86::Register, D::Error> {
+    unimplemented!()
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum Expr {
     #[serde(serialize_with = "ser_reg")]
+    #[serde(deserialize_with = "deser_reg")]
     Reg(iced_x86::Register),
     Imm(u32),
     Math(Box<ExprMath>),
@@ -24,7 +29,7 @@ pub fn from_op(instr: &iced_x86::Instruction, op: u32) -> Expr {
     }
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ExprMath {
     pub op: char,
     pub lhs: Expr,

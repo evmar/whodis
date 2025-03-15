@@ -4,8 +4,7 @@ fn main() {
         println!("{}", instr);
         let eff = whodis::effect::instr_effects(&instr);
         for e in eff {
-            let js = serde_json::to_string(&e).unwrap();
-            println!("  {}", js);
+            println!("  {e:?}");
         }
     }
 }
