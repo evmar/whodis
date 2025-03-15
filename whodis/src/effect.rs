@@ -2,7 +2,7 @@ use crate::expr::{ExprMath, from_op};
 
 use super::expr::Expr;
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug)]
 pub enum Effect {
     Write(EffectWrite),
     TODO,
@@ -17,7 +17,7 @@ impl std::fmt::Display for Effect {
     }
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug)]
 pub struct EffectWrite {
     pub dst: Expr,
     pub src: Expr,
