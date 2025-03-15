@@ -1,4 +1,4 @@
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
     Reg(iced_x86::Register),
     Imm(u32),
@@ -89,7 +89,7 @@ impl std::fmt::Display for Expr {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExprMath {
     pub lhs: Box<Expr>,
     pub op: char,
@@ -102,6 +102,129 @@ impl ExprMath {
             lhs: Box::new(lhs),
             op,
             rhs: Box::new(rhs),
+        }
+    }
+}
+
+mod parser {
+    use std::{iter::Peekable, str::Chars};
+
+    use super::*;
+
+    pub fn parse(text: &str) -> Option<Expr> {
+        let mut p = text.chars().peekable();
+        parse_expr(&mut p)
+    }
+
+    fn parse_expr(p: &mut Peekable<Chars>) -> Option<Expr> {
+        let mut expr = None;
+        loop {
+            let Some(&c) = p.peek() else {
+                break;
+            };
+            match c {
+                c if c.is_whitespace() => {
+                    p.next();
+                    continue;
+                }
+                c if c.is_digit(10) => {
+                    expr = Some(Expr::Imm(parse_imm(p)));
+                }
+                '+' | '-' | '*' => {
+                    p.next();
+                    let rhs = parse_expr(p).unwrap();
+                    expr = Some(Expr::new_math(expr.unwrap(), c, rhs));
+                }
+                '(' => {
+                    p.next();
+                    let inner = parse_expr(p).unwrap();
+                    assert_eq!(p.next(), Some(')'));
+                    assert!(expr.is_none());
+                    expr = Some(inner);
+                }
+                ')' => break,
+                c if c.is_alphabetic() => {
+                    let reg = parse_reg(p).unwrap();
+                    assert!(expr.is_none());
+                    expr = Some(Expr::Reg(reg));
+                }
+                c => unimplemented!("{:?}", c),
+            }
+        }
+        expr
+    }
+
+    fn parse_imm(p: &mut Peekable<Chars>) -> u32 {
+        let mut imm = 0;
+        while let Some(c) = p.peek() {
+            if c.is_digit(10) {
+                imm = imm * 10 + c.to_digit(10).unwrap();
+                p.next();
+            } else {
+                break;
+            }
+        }
+        imm
+    }
+
+    fn parse_reg(p: &mut Peekable<Chars>) -> Option<iced_x86::Register> {
+        let mut reg = String::new();
+        while let Some(&c) = p.peek() {
+            if c.is_alphabetic() {
+                reg.push(c);
+                p.next();
+            } else {
+                break;
+            }
+        }
+        let reg = match reg.as_str() {
+            "eax" => iced_x86::Register::EAX,
+            "ecx" => iced_x86::Register::ECX,
+            "edx" => iced_x86::Register::EDX,
+            "ebx" => iced_x86::Register::EBX,
+            "esp" => iced_x86::Register::ESP,
+            _ => unimplemented!(),
+        };
+        Some(reg)
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn test_parse() {
+            let exp = parser::parse("0").unwrap();
+            assert_eq!(exp.to_string(), "0x0");
+
+            let exp = parser::parse("0 + 1").unwrap();
+            assert_eq!(exp.to_string(), "0x0 + 0x1");
+
+            let exp = parser::parse("eax").unwrap();
+            assert_eq!(exp.to_string(), "eax");
+
+            let exp = parser::parse("(esp - 5) - 4").unwrap();
+            assert_eq!(exp.to_string(), "esp - 0x5 - 0x4");
+        }
+
+        #[test]
+        fn test_simplify() {
+            let exp = parser::parse("0").unwrap().simplify();
+            assert_eq!(exp.to_string(), "0x0");
+            let exp = parser::parse("1").unwrap().simplify();
+            assert_eq!(exp.to_string(), "0x1");
+
+            let exp = parser::parse("0 + 1").unwrap().simplify();
+            assert_eq!(exp.to_string(), "0x1");
+
+            let exp = parser::parse("eax + 1").unwrap().simplify();
+            assert_eq!(exp.to_string(), "eax + 0x1");
+
+            let exp = parser::parse("(eax + 1) + 2").unwrap().simplify();
+            assert_eq!(exp.to_string(), "eax + 0x3");
+
+            // let exp = parser::parse("(esp - 5) - 4").unwrap().simplify();
+            // assert_eq!(exp.to_string(), "esp - 0x9");
         }
     }
 }
