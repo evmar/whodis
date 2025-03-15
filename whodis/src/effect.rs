@@ -55,7 +55,7 @@ pub fn instr_effects(instr: &iced_x86::Instruction) -> Vec<Effect> {
                     })),
                 }),
                 Effect::Write(EffectWrite {
-                    dst: Expr::Mem(),
+                    dst: Expr::Mem(Box::new(Expr::Reg(iced_x86::Register::ESP))),
                     src,
                 }),
             ]
@@ -66,7 +66,7 @@ pub fn instr_effects(instr: &iced_x86::Instruction) -> Vec<Effect> {
             vec![
                 Effect::Write(EffectWrite {
                     dst,
-                    src: Expr::Mem(),
+                    src: Expr::Mem(Box::new(Expr::Reg(iced_x86::Register::ESP))),
                 }),
                 Effect::Write(EffectWrite {
                     dst: Expr::Reg(iced_x86::Register::ESP),
