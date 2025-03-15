@@ -1,7 +1,8 @@
 {
   "name": "web",
   "scripts": {
-    "build": "esbuild --bundle --format=esm --sourcemap --outfile=bundle.js main.tsx"
+    "build": "esbuild --bundle --format=esm --sourcemap --outfile=bundle.js main.tsx",
+    "serve": "esbuild --bundle --format=esm --sourcemap --outfile=bundle.js --servedir=. main.tsx"
   },
   "dependencies": {
     "esbuild": "^0.25.1",

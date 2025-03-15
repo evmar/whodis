@@ -1,4 +1,5 @@
 import * as preact from 'preact';
+import * as wasm from './pkg/glue'
 
 type JSInst = any;
 
@@ -17,6 +18,8 @@ function dis(instrs: JSInst[]) {
   return <table>{rows}</table>;
 }
 
-export default function (instrs: JSInst[]) {
+export default async function (instrs: JSInst[]) {
+  await wasm.default();
+  wasm.greet("hello");
   preact.render(dis(instrs), document.body);
 }
