@@ -89,7 +89,23 @@ pub fn instr_effects(instr: &iced_x86::Instruction) -> Vec<Effect> {
             vec![Effect::Jmp(dst)]
         }
 
-        Call => vec![Effect::TODO("call".into())],
+        Call => {
+            let dst = Expr::from_op(instr, 0);
+            vec![
+                // push return address
+                Effect::Write(EffectWrite {
+                    dst: Expr::new_reg(iced_x86::Register::ESP),
+                    src: Expr::new_math(Expr::new_reg(iced_x86::Register::ESP), '-', Expr::Imm(4)),
+                }),
+                Effect::Write(EffectWrite {
+                    dst: Expr::Mem(Box::new(Expr::new_reg(iced_x86::Register::ESP))),
+                    src: Expr::Imm(instr.next_ip() as u32),
+                }),
+                // jmp target
+                Effect::Jmp(dst),
+            ]
+        }
+
         Test => vec![Effect::TODO("test".into())],
         Ret => vec![Effect::TODO("ret".into())],
 
