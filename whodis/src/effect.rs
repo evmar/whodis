@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use crate::memory::ImageMemory;
+
 use super::expr::Expr;
 
 #[derive(Debug)]
@@ -135,13 +137,15 @@ pub fn instr_effects(instr: &iced_x86::Instruction) -> Vec<Effect> {
     }
 }
 
-pub struct State {
+pub struct State<'a> {
+    memory: &'a ImageMemory,
     var: HashMap<String, Expr>,
 }
 
-impl State {
-    pub fn new() -> Self {
+impl<'a> State<'a> {
+    pub fn new(memory: &'a ImageMemory) -> Self {
         let mut s = Self {
+            memory,
             var: HashMap::new(),
         };
         s.initial_regs();
@@ -162,7 +166,18 @@ impl State {
                     *expr = e.clone();
                 }
             }
-            Expr::Mem(expr) => self.update_expr(&mut *expr),
+            Expr::Mem(addr) => {
+                let addr = &mut **addr;
+                self.update_expr(addr);
+                match addr {
+                    Expr::Imm(addr) => {
+                        if let Some(val) = self.memory.read_u32(*addr) {
+                            *expr = Expr::Imm(val);
+                        }
+                    }
+                    _ => {}
+                }
+            }
             Expr::Math(math) => {
                 self.update_expr(&mut math.lhs);
                 self.update_expr(&mut math.rhs);
@@ -210,9 +225,9 @@ impl State {
     }
 }
 
-pub fn accumulate(instrs: &[iced_x86::Instruction]) -> Vec<Effect> {
+pub fn accumulate(memory: &ImageMemory, instrs: &[iced_x86::Instruction]) -> Vec<Effect> {
     let mut vars = Vec::new();
-    let mut state = State::new();
+    let mut state = State::new(memory);
     let mut effects = Vec::new();
     for instr in instrs {
         for eff in state.effects(instr) {

@@ -23,10 +23,15 @@ pub struct Analysis {
 
 #[wasm_bindgen]
 pub fn sample() -> Analysis {
-    let instrs = whodis::decode::decode(&whodis::sample::CODE, whodis::sample::EIP);
-    let blocks = whodis::decode::blocks(&instrs);
+    let mut memory = whodis::memory::ImageMemory::new();
+    for &(addr, val) in whodis::sample::IAT_ENTRIES.iter() {
+        memory.write_u32(addr, val);
+    }
 
-    let mut s = whodis::effect::State::new();
+    let instrs = whodis::decode::decode(&whodis::sample::CODE, whodis::sample::EIP);
+    let blocks = whodis::decode::blocks(&memory, &instrs);
+
+    let mut s = whodis::effect::State::new(&memory);
 
     Analysis {
         instrs: instrs
