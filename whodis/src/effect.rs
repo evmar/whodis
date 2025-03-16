@@ -106,8 +106,28 @@ pub fn instr_effects(instr: &iced_x86::Instruction) -> Vec<Effect> {
             ]
         }
 
+        Ret => {
+            let pop = match instr.op0_kind() {
+                iced_x86::OpKind::Immediate16 => instr.immediate16(),
+                _ => todo!(),
+            };
+            let pop = pop + 4; // return addr
+
+            let return_address = Expr::Mem(Box::new(Expr::new_reg(iced_x86::Register::ESP)));
+            vec![
+                Effect::Write(EffectWrite {
+                    dst: Expr::new_reg(iced_x86::Register::ESP),
+                    src: Expr::new_math(
+                        Expr::new_reg(iced_x86::Register::ESP),
+                        '+',
+                        Expr::Imm(pop as u32),
+                    ),
+                }),
+                Effect::Jmp(return_address),
+            ]
+        }
+
         Test => vec![Effect::TODO("test".into())],
-        Ret => vec![Effect::TODO("ret".into())],
 
         Nop => vec![],
 
