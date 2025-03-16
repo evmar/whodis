@@ -135,13 +135,20 @@ pub fn instr_effects(instr: &iced_x86::Instruction) -> Vec<Effect> {
     }
 }
 
-#[derive(Default)]
 pub struct State {
     var: HashMap<String, Expr>,
 }
 
 impl State {
-    pub fn initial_regs(&mut self) {
+    pub fn new() -> Self {
+        let mut s = Self {
+            var: HashMap::new(),
+        };
+        s.initial_regs();
+        s
+    }
+
+    fn initial_regs(&mut self) {
         for var in "eax ecx edx ebx esp ebp esi edi".split(' ') {
             self.var
                 .insert(var.to_string(), Expr::Var(format!("${var}")));
@@ -205,7 +212,7 @@ impl State {
 
 pub fn accumulate(instrs: &[iced_x86::Instruction]) -> Vec<Effect> {
     let mut vars = Vec::new();
-    let mut state = State::default();
+    let mut state = State::new();
     let mut effects = Vec::new();
     for instr in instrs {
         for eff in state.effects(instr) {
