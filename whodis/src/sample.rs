@@ -1,6 +1,8 @@
 //! Sample function while we develop.
 
-pub const CODE: [u8; 175] = [
+use crate::function::Function;
+
+pub const CODE: &[u8] = &[
     0x83, 0xec, 0x50, 0x56, 0x8b, 0xf1, 0x8b, 0x46, 0x04, 0x8b, 0x40, 0x04, 0x6a, 0x00, 0x8d, 0x4c,
     0x24, 0x08, 0x51, 0x50, 0xff, 0x15, 0x64, 0x52, 0x44, 0x00, 0x85, 0xc0, 0x74, 0x57, 0x8b, 0x56,
     0x04, 0x8b, 0x42, 0x04, 0x57, 0x8d, 0x4c, 0x24, 0x18, 0x51, 0x50, 0xff, 0x15, 0x68, 0x52, 0x44,
@@ -15,6 +17,35 @@ pub const CODE: [u8; 175] = [
 ];
 pub const EIP: u32 = 0x40d580;
 
-// 0x445264 GetUpdateRect
-// 0x445268 BeginPaint
-// 0x445208 EndPaint
+#[allow(non_snake_case)]
+pub fn functions() -> [Function; 3] {
+    let mut GetUpdateRect = Function {
+        addr: 0x448814,
+        name: "GetUpdateRect".to_string(),
+        arg_count: 3,
+        effects: vec![],
+    };
+    GetUpdateRect.stdcall_effects();
+    let mut BeginPaint = Function {
+        addr: 0x448806,
+        name: "BeginPaint".to_string(),
+        arg_count: 2,
+        effects: vec![],
+    };
+    BeginPaint.stdcall_effects();
+    let mut EndPaint = Function {
+        addr: 0x4487fa,
+        name: "EndPaint".to_string(),
+        arg_count: 2,
+        effects: vec![],
+    };
+    EndPaint.stdcall_effects();
+    [GetUpdateRect, BeginPaint, EndPaint]
+}
+
+/// Memory address => value, after IAT is loaded.
+pub const IAT_ENTRIES: &[(u32, u32)] = &[
+    (0x445264, 0x448814), // GetUpdateRect
+    (0x445268, 0x448806), // BeginPaint
+    (0x445208, 0x4487fa), // EndPaint
+];
