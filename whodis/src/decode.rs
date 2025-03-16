@@ -17,6 +17,10 @@ pub fn sample() -> Vec<iced_x86::Instruction> {
     ];
     let eip = 0x40d580u32;
 
+    // 0x445264 GetUpdateRect
+    // 0x445268 BeginPaint
+    // 0x445208 EndPaint
+
     let decoder =
         iced_x86::Decoder::with_ip(32, &paint, eip as u64, iced_x86::DecoderOptions::NONE);
     decoder.into_iter().collect()
