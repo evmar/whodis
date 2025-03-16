@@ -16,11 +16,7 @@ function Dis(props: { ana: wasm.Analysis, effMode: EffectsMode }) {
     for (let i = start; i < end; i++) {
       const inst = ana.instrs[i];
       let eff;
-      if (effMode === 'block') {
-        if (i == start) {
-          eff = <td class='effect' rowspan={end - start}>{effects.map(e => <div>{e}</div>)}</td>;
-        }
-      } else {
+      if (effMode === 'instr') {
         eff = <td class='effect'>{inst.effects.map(e => <div>{e}</div>)}</td>;
       }
       rows.push(
@@ -31,9 +27,15 @@ function Dis(props: { ana: wasm.Analysis, effMode: EffectsMode }) {
         </tr>
       );
     }
-    return <table class='block'>{rows}</table>;
+
+    let eff;
+    if (effMode === 'block') {
+      eff = <div class='effect' >{effects.map(e => <div>{e}</div>)}</div>;
+    }
+
+    return <div class='block'><table>{rows}</table>{eff}</div>;
   });
-  return <div>{blocks}</div>;
+  return <div class='dis'>{blocks}</div>;
 }
 
 function Body(props: { ana: wasm.Analysis }) {

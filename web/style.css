@@ -41,6 +41,12 @@ td {
     vertical-align: baseline;
 }
 
+.dis {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+}
+
 .addr {
     font-size: 12px;
     font-family: ui-monospace, monospace;
@@ -58,6 +64,7 @@ td {
 }
 
 .block {
+    display: flex;
     border-radius: 0.5em;
     border: solid 1px transparent;
     padding: 0.5em;
