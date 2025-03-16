@@ -23,7 +23,7 @@ pub struct Analysis {
 
 #[wasm_bindgen]
 pub fn sample() -> Analysis {
-    let instrs = whodis::decode::sample();
+    let instrs = whodis::decode::decode(&whodis::sample::CODE, whodis::sample::EIP);
     let blocks = whodis::decode::blocks(&instrs);
 
     let mut s = whodis::effect::State::default();
