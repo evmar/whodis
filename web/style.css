@@ -1,3 +1,19 @@
+:root {
+    background: white;
+    color: black;
+    --faint: #777;
+}
+
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        background: #222;
+        color: white;
+        /* whoops I guess I didn't need this variable */
+        --faint: #777;
+    }
+}
+
 body {
     font-family: ui-sans-serif, system-ui, sans-serif;
     font-size: 14px;
@@ -7,18 +23,17 @@ body {
     margin-left: 20ex;
 }
 
-
 select,
 ::picker(select) {
     /* https://open-ui.org/components/customizableselect/ */
     appearance: base-select;
-    border: solid 1px #777;
+    border: solid 1px var(--faint);
 }
 
 .box {
     display: inline-block;
     border-radius: 0.5rem;
-    border: solid 1px #eee;
+    border: solid 1px var(--faint);
     padding: 0.5rem;
 }
 
@@ -29,7 +44,7 @@ td {
 .addr {
     font-size: 12px;
     font-family: ui-monospace, monospace;
-    color: #777;
+    color: var(--faint);
     width: 10ex;
 }
 
@@ -50,9 +65,8 @@ td {
 }
 
 .block:hover {
-    border: solid 1px #eee;
+    border: solid 1px var(--faint);
 }
-
 
 @media (max-width: 500px) {
     body {
