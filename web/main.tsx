@@ -6,55 +6,44 @@ function hex(n: number) {
   return n.toString(16).padStart(8, '0');
 }
 
-type EffectsMode = 'instr' | 'block';
-
-function Dis(props: { ana: wasm.Analysis, effMode: EffectsMode }) {
-  const { ana, effMode } = props;
+function Dis(props: { program: wasm.Program, count: number }) {
+  const { program, count } = props;
+  const ana = wasm.sample(props.program, count);
 
   const blocks = ana.blocks.map(({ start, end }) => {
     const rows = [];
     for (let i = start; i < end; i++) {
       const inst = ana.instrs[i];
-      let eff;
-      if (effMode === 'instr') {
-        eff = <td class='effect'>{inst.effects.map(e => <div>{e}</div>)}</td>;
-      }
+      const eff = <td class='effect'>{inst.effects.map(e => <div>{e}</div>)}</td>;
       rows.push(
         <tr>
           <td class='addr'>{hex(inst.ip)}</td>
-          <td class='asm'>{inst.asm}</td>
+          <td class='asm'>{inst.lit ? '* ' : ''}{inst.asm}</td>
           {eff}
         </tr>
       );
     }
 
-    let eff;
-    return <div class='block'><table>{rows}</table>{eff}</div>;
+    return <div class='block'><table>{rows}</table></div>;
   });
-  return <div class='dis'>{blocks}</div>;
+  const eff = <div class='effect'>{ana.effects.map(e => <div>{e}</div>)}</div>;
+  return <div class='dis'><div class='blocks'>{blocks}</div>{eff}</div>;
 }
 
-function Body(props: { ana: wasm.Analysis }) {
-  const [effects, setEffects] = hooks.useState<EffectsMode>('instr');
-
-  const setSelectValue = (e: Event) => {
-    setEffects((e.currentTarget! as HTMLInputElement).value as EffectsMode);
-  };
+function Body(props: { program: wasm.Program }) {
+  const [count, setCount] = hooks.useState(0);
 
   return <main>
-    <div style={{ padding: '1em' }}>
-      effects:{' '}
-      <select name='effects' onChange={setSelectValue}>
-        <option value='instr'>per instruction</option>
-        <option value='block'>per block</option>
-      </select>
+    <input type='range' min='0' max='20' value={count} onInput={e => setCount(parseInt(e.currentTarget.value))} />
+    <div>
+      <Dis program={props.program} count={count} />
     </div>
-    <Dis ana={props.ana} effMode={effects} />
   </main>;
 }
 
 export default async function () {
   await wasm.default();
-  const ana = wasm.sample();
-  preact.render(<Body ana={ana} />, document.body);
+  const program = wasm.init();
+
+  preact.render(<Body program={program} />, document.body);
 }

@@ -1,21 +1,19 @@
 fn main() {
     let instrs = whodis::decode::decode(&whodis::sample::CODE, whodis::sample::EIP);
+    let memory = whodis::sample::memory();
+
+    let mut state = whodis::effect::State::new(&memory);
 
     for instr in &instrs {
         println!("{}", instr);
         let eff = whodis::effect::instr_effects(instr);
-        for e in eff {
+        for e in &eff {
             println!("  {e:x?}");
         }
+        state.run(eff);
     }
 
-    let memory = whodis::sample::memory();
-
-    let mut state = whodis::effect::State::new(&memory);
-    for instr in instrs {
-        println!("{}", instr);
-        for eff in state.effects(&instr) {
-            println!("  {eff:x?}");
-        }
+    for eff in state.effects() {
+        println!("  {eff:x?}");
     }
 }

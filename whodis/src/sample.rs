@@ -51,7 +51,7 @@ const IAT_ENTRIES: &[(u32, u32)] = &[
 ];
 
 pub fn memory() -> ImageMemory {
-    let mut mem = ImageMemory::new();
+    let mut mem = ImageMemory::default();
     for &(addr, val) in IAT_ENTRIES.iter() {
         mem.write_u32(addr, val);
     }

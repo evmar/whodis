@@ -4,6 +4,7 @@ use wasm_bindgen::prelude::*;
 pub struct Instr {
     ip: u32,
     asm: String,
+    lit: bool,
     effects: Vec<String>,
 }
 
@@ -18,26 +19,49 @@ pub struct Block {
 pub struct Analysis {
     instrs: Vec<Instr>,
     blocks: Vec<Block>,
+    effects: Vec<String>,
 }
 
 #[wasm_bindgen]
-pub fn sample() -> Analysis {
-    let memory = whodis::sample::memory();
+pub struct Program {
+    memory: whodis::memory::ImageMemory,
+}
 
+#[wasm_bindgen]
+pub fn init() -> Program {
+    let memory = whodis::sample::memory();
+    Program { memory }
+}
+
+#[wasm_bindgen]
+pub fn sample(program: &Program, mut count: usize) -> Analysis {
     let instrs = whodis::decode::decode(&whodis::sample::CODE, whodis::sample::EIP);
     let blocks = whodis::decode::blocks(&instrs);
 
-    let mut s = whodis::effect::State::new(&memory);
+    let mut s = whodis::effect::State::new(&program.memory);
 
-    Analysis {
-        instrs: instrs
-            .iter()
-            .map(|i| Instr {
+    let instrs: Vec<_> = instrs
+        .iter()
+        .map(|i| {
+            let effects = whodis::effect::instr_effects(i);
+            let instr_effects = effects.iter().map(|e| e.to_string()).collect();
+            let mut lit = false;
+            if count > 0 {
+                lit = true;
+                s.run(effects);
+                count -= 1;
+            }
+            Instr {
                 ip: i.ip() as u32,
                 asm: i.to_string(),
-                effects: s.effects(i).iter().map(|e| e.to_string()).collect(),
-            })
-            .collect(),
+                lit,
+                effects: instr_effects,
+            }
+        })
+        .collect();
+
+    Analysis {
+        instrs,
         blocks: blocks
             .iter()
             .map(|b| Block {
@@ -45,5 +69,6 @@ pub fn sample() -> Analysis {
                 end: b.instrs.end,
             })
             .collect(),
+        effects: s.effects().iter().map(|e| e.to_string()).collect(),
     }
 }

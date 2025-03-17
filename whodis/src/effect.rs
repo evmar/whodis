@@ -140,22 +140,15 @@ pub fn instr_effects(instr: &iced_x86::Instruction) -> Vec<Effect> {
 pub struct State<'a> {
     memory: &'a ImageMemory,
     var: HashMap<String, Expr>,
+    effects: Vec<Effect>,
 }
 
 impl<'a> State<'a> {
     pub fn new(memory: &'a ImageMemory) -> Self {
-        let mut s = Self {
+        Self {
             memory,
             var: HashMap::new(),
-        };
-        s.initial_regs();
-        s
-    }
-
-    fn initial_regs(&mut self) {
-        for var in "eax ecx edx ebx esp ebp esi edi".split(' ') {
-            self.var
-                .insert(var.to_string(), Expr::Var(format!("${var}")));
+            effects: Vec::new(),
         }
     }
 
@@ -164,6 +157,8 @@ impl<'a> State<'a> {
             Expr::Var(var) => {
                 if let Some(e) = self.var.get(var) {
                     *expr = e.clone();
+                } else {
+                    *expr = Expr::Var(format!("${var}"));
                 }
             }
             Expr::Mem(addr) => {
@@ -214,45 +209,42 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn effects(&mut self, instr: &iced_x86::Instruction) -> Vec<Effect> {
-        let mut effects = Vec::new();
-        for mut eff in instr_effects(instr) {
+    fn log_effect(&mut self, eff: Effect) {
+        // ignore writes to variables, we summarize in .effect()
+        match &eff {
+            Effect::Write(w) => match &w.dst {
+                Expr::Var(_var) => {
+                    return;
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+        self.effects.push(eff);
+    }
+
+    pub fn run(&mut self, effects: Vec<Effect>) {
+        for mut eff in effects {
             self.update_effect(&mut eff);
             self.evolve(&eff);
-            effects.push(eff);
+            self.log_effect(eff);
+        }
+    }
+
+    pub fn effects(self) -> Vec<Effect> {
+        let mut effects = self.effects;
+        let mut vars: Vec<_> = self
+            .var
+            .into_iter()
+            .map(|(var, expr)| (var, expr))
+            .collect();
+        vars.sort_by(|(v1, _), (v2, _)| v1.cmp(v2));
+        for (var, expr) in vars {
+            effects.push(Effect::Write(EffectWrite {
+                dst: Expr::Var(var),
+                src: expr,
+            }));
         }
         effects
     }
-}
-
-pub fn accumulate(memory: &ImageMemory, instrs: &[iced_x86::Instruction]) -> Vec<Effect> {
-    let mut vars = Vec::new();
-    let mut state = State::new(memory);
-    let mut effects = Vec::new();
-    for instr in instrs {
-        for eff in state.effects(instr) {
-            match &eff {
-                Effect::Write(w) => match &w.dst {
-                    Expr::Var(var) => {
-                        if !vars.contains(var) {
-                            vars.push(var.clone());
-                        }
-                        continue;
-                    }
-                    _ => {}
-                },
-                _ => {}
-            }
-            effects.push(eff);
-        }
-    }
-    vars.sort();
-    for var in vars {
-        let src = state.var.get(&var).unwrap().clone();
-        effects.push(Effect::Write(EffectWrite {
-            dst: Expr::Var(var),
-            src,
-        }));
-    }
-    effects
 }

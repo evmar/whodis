@@ -4,17 +4,12 @@ use std::collections::HashMap;
 // Idea: some representation corresponding to mapped sections of the binary?
 
 /// Static program memory.
+#[derive(Default)]
 pub struct ImageMemory {
     u32s: HashMap<u32, u32>,
 }
 
 impl ImageMemory {
-    pub fn new() -> Self {
-        Self {
-            u32s: HashMap::new(),
-        }
-    }
-
     pub fn read_u32(&self, addr: u32) -> Option<u32> {
         self.u32s.get(&addr).copied()
     }
