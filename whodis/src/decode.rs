@@ -1,5 +1,3 @@
-use crate::{effect::Effect, memory::ImageMemory};
-
 pub fn decode(code: &[u8], eip: u32) -> Vec<iced_x86::Instruction> {
     let decoder = iced_x86::Decoder::with_ip(32, code, eip as u64, iced_x86::DecoderOptions::NONE);
     decoder.into_iter().collect()
@@ -7,17 +5,15 @@ pub fn decode(code: &[u8], eip: u32) -> Vec<iced_x86::Instruction> {
 
 pub struct Block {
     pub instrs: std::ops::Range<usize>,
-    pub effects: Vec<Effect>,
 }
 
-pub fn blocks(memory: &ImageMemory, instrs: &[iced_x86::Instruction]) -> Vec<Block> {
+pub fn blocks(instrs: &[iced_x86::Instruction]) -> Vec<Block> {
     let mut blocks = Vec::new();
     let mut start = 0;
     for (i, instr) in instrs.iter().enumerate() {
         if instr.flow_control() != iced_x86::FlowControl::Next {
             blocks.push(Block {
                 instrs: start..i + 1,
-                effects: crate::effect::accumulate(memory, &instrs[start..=i]),
             });
             start = i + 1;
         }
@@ -25,7 +21,6 @@ pub fn blocks(memory: &ImageMemory, instrs: &[iced_x86::Instruction]) -> Vec<Blo
     if start < instrs.len() {
         blocks.push(Block {
             instrs: start..instrs.len(),
-            effects: crate::effect::accumulate(memory, &instrs[start..]),
         });
     }
     blocks

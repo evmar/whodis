@@ -1,6 +1,6 @@
 //! Sample function while we develop.
 
-use crate::function::Function;
+use crate::{function::Function, memory::ImageMemory};
 
 pub const CODE: &[u8] = &[
     0x83, 0xec, 0x50, 0x56, 0x8b, 0xf1, 0x8b, 0x46, 0x04, 0x8b, 0x40, 0x04, 0x6a, 0x00, 0x8d, 0x4c,
@@ -44,8 +44,16 @@ pub fn functions() -> [Function; 3] {
 }
 
 /// Memory address => value, after IAT is loaded.
-pub const IAT_ENTRIES: &[(u32, u32)] = &[
+const IAT_ENTRIES: &[(u32, u32)] = &[
     (0x445264, 0x448814), // GetUpdateRect
     (0x445268, 0x448806), // BeginPaint
     (0x445208, 0x4487fa), // EndPaint
 ];
+
+pub fn memory() -> ImageMemory {
+    let mut mem = ImageMemory::new();
+    for &(addr, val) in IAT_ENTRIES.iter() {
+        mem.write_u32(addr, val);
+    }
+    mem
+}

@@ -9,12 +9,9 @@ fn main() {
         }
     }
 
-    let mut mem = whodis::memory::ImageMemory::new();
-    for &(addr, val) in whodis::sample::IAT_ENTRIES.iter() {
-        mem.write_u32(addr, val);
-    }
+    let memory = whodis::sample::memory();
 
-    let mut state = whodis::effect::State::new(&mem);
+    let mut state = whodis::effect::State::new(&memory);
     for instr in instrs {
         println!("{}", instr);
         for eff in state.effects(&instr) {

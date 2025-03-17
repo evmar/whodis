@@ -11,7 +11,7 @@ type EffectsMode = 'instr' | 'block';
 function Dis(props: { ana: wasm.Analysis, effMode: EffectsMode }) {
   const { ana, effMode } = props;
 
-  const blocks = ana.blocks.map(({ start, end, effects }) => {
+  const blocks = ana.blocks.map(({ start, end }) => {
     const rows = [];
     for (let i = start; i < end; i++) {
       const inst = ana.instrs[i];
@@ -29,10 +29,6 @@ function Dis(props: { ana: wasm.Analysis, effMode: EffectsMode }) {
     }
 
     let eff;
-    if (effMode === 'block') {
-      eff = <div class='effect' >{effects.map(e => <div>{e}</div>)}</div>;
-    }
-
     return <div class='block'><table>{rows}</table>{eff}</div>;
   });
   return <div class='dis'>{blocks}</div>;
